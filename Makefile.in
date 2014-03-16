@@ -43,6 +43,19 @@ install: $(LIBRARY_NAME) $(HEADERS)
 	mkdir -p $(PKGCONFIGDIR)
 	$(INSTALL) --mode=0644 $(PKGCONFIG_FILES) $(PKGCONFIGDIR)
 
+TEST_SOURCES := test.c
+TEST_OBJS := $(TEST_SOURCES:.c=.o)
+TEST_PROGRAMS := $(patsubst %.o,%,$(TEST_OBJS))
+
+tests: $(TEST_PROGRAMS)
+
+$(TEST_PROGRAMS): % : %.o $(LIBRARY_NAME)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o $@ $^
+
+$(TEST_OBJS): %.o : %.c $(LIBRARY_NAME)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
 clean:
 	rm -rf $(OBJS) $(LTOBJS) $(LIBRARY_NAME)
 	rm -rf .libs
+	rm -rf $(TEST_PROGRAMS) $(TEST_OBJS)
