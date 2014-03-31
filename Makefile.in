@@ -1,0 +1,61 @@
+PACKAGE_NAME := sds
+LIBRARY_NAME := lib$(PACKAGE_NAME).la
+
+prefix := @prefix@
+exec_prefix := @exec_prefix@
+libdir := @libdir@
+includedir := @includedir@
+pkgconfigdir := $(libdir)/pkgconfig
+
+LIBDIR := $(DESTDIR)$(libdir)
+INCLUDEDIR := $(DESTDIR)$(includedir)
+PKGCONFIGDIR := $(DESTDIR)$(pkgconfigdir)
+
+CC := gcc
+LIBTOOL := libtool
+INSTALL := install
+
+CFLAGS := -Wall -Wextra -Werror -g -std=c99 $(CFLAGS)
+LIBTOOL_CURRENT := @LIBTOOL_CURRENT@
+LIBTOOL_REVISION := @LIBTOOL_REVISION@
+LIBTOOL_AGE := @LIBTOOL_AGE@
+LIBTOOL_VERSION := $(LIBTOOL_CURRENT):$(LIBTOOL_REVISION):$(LIBTOOL_AGE)
+
+SOURCES := sds.c
+HEADERS := sds.h
+PKGCONFIG_FILES := sds.pc
+OBJS := $(SOURCES:.c=.o)
+LTOBJS := $(SOURCES:.c=.lo)
+
+all: $(LIBRARY_NAME)
+
+$(LIBRARY_NAME): $(LTOBJS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -rpath $(LIBDIR) -version-info $(LIBTOOL_VERSION) -o $@ $^
+
+%.lo: %.c
+	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+install: $(LIBRARY_NAME) $(HEADERS)
+	mkdir -p $(LIBDIR)
+	$(LIBTOOL) --mode=install $(INSTALL) $< $(LIBDIR)
+	mkdir -p $(INCLUDEDIR)
+	$(INSTALL) $(HEADERS) $(INCLUDEDIR)
+	mkdir -p $(PKGCONFIGDIR)
+	$(INSTALL) --mode=0644 $(PKGCONFIG_FILES) $(PKGCONFIGDIR)
+
+TEST_SOURCES := test.c
+TEST_OBJS := $(TEST_SOURCES:.c=.o)
+TEST_PROGRAMS := $(patsubst %.o,%,$(TEST_OBJS))
+
+tests: $(TEST_PROGRAMS)
+
+$(TEST_PROGRAMS): % : %.o $(LIBRARY_NAME)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o $@ $^
+
+$(TEST_OBJS): %.o : %.c $(LIBRARY_NAME)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+clean:
+	rm -rf $(OBJS) $(LTOBJS) $(LIBRARY_NAME)
+	rm -rf .libs
+	rm -rf $(TEST_PROGRAMS) $(TEST_OBJS)
